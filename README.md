@@ -3,11 +3,11 @@ This repository generates car images from the cityscapes dataset with different 
 
 The original image and the images after the GT labels:
 
-<img src="images/aachen_000000_000019_leftImg8bit.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png.png" width="420"/> 
+<img src="images/aachen_000000_000019_leftImg8bit.png" width="420"/> <img src="images/Car%20after%20GT%20labels.png" width="420"/> 
 
 The picture on the left is an image that is obstructed, because of the mask R-CNN these don't get saved. The images on the right is the zoomed image after cropping the images using the bounding box produced from the mask R-CNN. 
 
-<img src="images/Obstructed_CarImage.png" width="420"/> <img src="images/Car%20after%20GT%20labels.png" width="420"/> 
+<img src="images/Obstructed_CarImage.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="420"/> 
 
 
 These images are the dataset for the different GAN structues that are build. 
