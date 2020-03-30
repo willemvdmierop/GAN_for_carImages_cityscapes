@@ -10,6 +10,6 @@ The picture on the left is an image that is obstructed, because of the mask R-CN
 <img src="images/Obstructed_CarImage.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="420"/> 
 
 
-These images are the dataset for the different GAN structues that are build. 
+These images are the dataset for the different GAN structues that are build. The accuracy metrics used are FID and IS score. 
 
 The original GAN structure that we build is a DC GAN, this can be found in the DCGAN_original.py
