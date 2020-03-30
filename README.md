@@ -3,7 +3,7 @@ This repository generates car images from the cityscapes dataset with different 
 
 The original image and the final image after preprocessing:
 
-<img src="images/aachen_000000_000019_leftImg8bit.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="420" height = "250/> 
+<img src="images/aachen_000000_000019_leftImg8bit.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="420" height = "250"/> 
 
 
 These images are the dataset for the different GAN structues that are build. 
