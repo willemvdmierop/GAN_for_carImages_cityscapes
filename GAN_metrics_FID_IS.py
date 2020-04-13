@@ -224,7 +224,7 @@ inception_model = inception_v3(pretrained=True, transform_input=False).to(device
 inception_model.eval()
 
 ################################## statistics real images ######################
-mu_real, sigma_real = statistics_real_images(path_real, batch_size, model=model_FID)
+mu_real, sigma_real = statistics_real_images(path_real, batch_size, model=model_FID, cuda=cuda)
 
 ################################## computation of metrics ######################
 for filename in sorted(os.listdir(path_real)):
