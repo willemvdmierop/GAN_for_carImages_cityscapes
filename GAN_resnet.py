@@ -13,10 +13,9 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
 import Model_ResNet_GAN
+
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
-
-
 
 device = torch.device('cpu')
 if torch.cuda.is_available():
@@ -54,12 +53,18 @@ class Cars(data.Dataset):
         X = self.load_img(idx)
         return idx, X
 
+
 #################################### Train Parameters for Dis and GEN ################################
+
+#################################
+### Training Hyper-Parameters ###
+#################################
+
 wd = os.getcwd()
 batch_size, image_size = 256, [64, 64]
 assert len(image_size) == 2
 # Epochs
-num_epochs = 4001
+num_epochs = 2501
 # number of channels
 nc = 3
 # latent space (z) size: G input
@@ -68,7 +73,23 @@ latentVect = 100
 FeaDis = 64
 # Feature vector of generator
 FeaGen = 64
-#path_img = os.path.join(wd, "cars3_green")
+#### chose your Resnet:
+ResN18 = False ########
+ResN34 = True #########
+#######################
+# optimizers
+lrate = 1e-4
+lrate_str = '0001'
+w_decay = 1e-3
+w_decay_str = '001'
+optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
+if ResN18: ResNet_str = 'ResNet18'
+if ResN34: ResNet_str = 'ResNet34'
+
+dirname = 'model_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
+if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
+
+# path_img = os.path.join(wd, "cars3_green")
 # this is just for now, use path above for server training
 path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
@@ -85,7 +106,12 @@ dataloader = data.DataLoader(obs, **dataloader_pars)
 g_pars = {'z_dim': latentVect, 'in_planes': FeaGen, 'channels': nc}
 d_pars = {'in_planes': FeaDis, 'channels': nc}
 
-d = Model_ResNet_GAN.ResNet_Discriminator(Model_ResNet_GAN.BasicBlock,[2,2,2,2],**d_pars)
+# ResNet18: parameters discriminator 11183318
+if ResN18:
+    d = Model_ResNet_GAN.ResNet_Discriminator(Model_ResNet_GAN.BasicBlock,[2,2,2,2],**d_pars)
+# ResNet34: parameters discriminator 21298918
+if ResN34:
+    d = Model_ResNet_GAN.ResNet_Discriminator(Model_ResNet_GAN.BasicBlock, [3, 4, 6, 3], **d_pars)
 # weights_d = torch.load(os.path.join(wd, "dis_gr_ResN_LR1e-4_WD1e-3_Batch256_2000.pth"))
 # d.load_state_dict(weights_d)
 d = d.to(device)
@@ -96,8 +122,12 @@ for _n, _par in d.state_dict().items():
     total_d += _par.numel()
 
 print("parameters discriminator", total_d)
-
-g = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock,[2,2,2,2], **g_pars)
+# ResNet18: parameters generator 14689046
+if ResN18:
+    g = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock,[2,2,2,2], **g_pars)
+# ResNet34: parameters generator 22958884
+if ResN34:
+    g = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [3, 4, 6, 3], **g_pars)
 # weights_g = torch.load(os.path.join(wd, "gen_gr_ResN_LR1e-4_WD1e-3_Batch256_2000.pth"))
 # g.load_state_dict(weights_g)
 g = g.to(device)
@@ -110,29 +140,41 @@ for _n, _par in g.state_dict().items():
 print("parameters generator", total_g)
 
 
-#
-print('# ' + '=' *45 + ' Training ' + '=' * 45 + ' #')
+# orthogonal parameter regularization. Source: https://github.com/ajbrock/BigGAN-PyTorch/blob/master/utils.py
+def ortho_reg(model, strength=1e-4, blacklist=[]):
+    with torch.no_grad():
+        for param in model.parameters():
+            # Regularize only parameters with at least 2 dim or whitelisted
+            if len(param.shape) < 2 or any([param is item for item in blacklist]):
+                continue
+            # take all parameters to matrix shape, i.e. 2 dim
+            w = param.view(param.shape[0], -1)
+            # apply orthogonal regularization
+            grad = (2 * torch.mm(torch.mm(w, w.t())
+                                 * (1. - torch.eye(w.shape[0], device=w.device)), w))
+            # update regularized parameters
+            param.grad.data += strength * grad.view(param.shape)
+
+
+print('# ' + '=' * 45 + ' Training ' + '=' * 45 + ' #')
 # ============================================= Training ============================================= #
 # create labels
 real_label = 1
 generated_label = 0
 
-# optimizers
-lrate = 1e-4
-optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
 if not os.path.exists(wd + '/gen_images_green_ResNet'):
     os.mkdir(wd + '/gen_images_green_ResNet')
 
-tb = SummaryWriter(comment="ResNet_GAN_LR_1e-4_BATCH_256_WD_1e-3")
+tb = SummaryWriter(comment="ResNet_GAN_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str)
 loss = BCELoss()
 loss = loss.to(device)
 
 img_list = []
 # main train loop
-for e in range(2000, num_epochs):
+for e in range(num_epochs):
     for id, data in dataloader:
         # print(id)
         # first, train the discriminator
@@ -161,8 +203,11 @@ for e in range(2000, num_epochs):
         loss_g = loss(predict_g, labels_g)
         loss_g.backward()
         total_loss = loss_t + loss_g
-        # update discriminator weights
+        # apply orthogonal regularization to discriminator parameters
+        ortho_reg(d)
+        # update discriminator parameters
         optimizerD.step()
+
         # D(G(z))
         g.zero_grad()
         labels_g_real = torch.ones(batch_size).unsqueeze_(0)
@@ -172,49 +217,45 @@ for e in range(2000, num_epochs):
         loss_g_real = loss(o, labels_g_real)
         # update generator weights
         loss_g_real.backward()
+        # apply orthogonal regularization to generator parameters
+        ortho_reg(g)
+        # update generator parameters
         optimizerG.step()
 
         tb.add_scalar('Discriminator Loss w.r.t. Real Data (D(x))', loss_t, e)
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    if e % 250 == 0:
-        torch.save(g.state_dict(), os.path.join(wd, "gen_gr_ResN_LR1e-4_WD1e-3_256_" + str(e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(wd, "dis_gr_ResN_LR1e-4_WD1e-3_256_"+ str(e) + ".pth"))
+    if e % 100 == 0 and e > 500:
+        folder_name = os.path.join(wd, dirname)
+        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
+            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + str(
+            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         print("saved intermediate weights")
-        weights = torch.load(os.path.join(wd,"gen_gr_ResN_LR1e-4_WD1e-3_256_" + str(e) + ".pth" ))
+        weights = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
+            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         args = {'latentVect': 100, 'FeaGen': 128, 'nc': 3}
-        model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock,[2,2,2,2], **g_pars)
+        if ResN18:
+            model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [2, 2, 2, 2], **g_pars)
+        if ResN34:
+            model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [3, 4, 6, 3], **g_pars)
         model.load_state_dict(weights)
-        z = torch.randn(1, 100, 1, 1)
-        out = model(z)
-        t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
-        out = out.detach().clone().squeeze_(0)
-        out = t_(out).numpy().transpose(1, 2, 0)
-        plt.imshow(out)
-        filename = wd + "/gen_images_green_ResNet/" + "img_gen_gr_ResNet_" + str(e) + ".png"
-        plt.savefig(filename)
-
+        for i in range(5):
+            if not os.path.exists(wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e)):
+                os.mkdir(wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e))
+            z = torch.randn(1, 100, 1, 1)
+            out = model(z)
+            t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
+            out = out.detach().clone().squeeze_(0)
+            out = t_(out).numpy().transpose(1, 2, 0)
+            filename = wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
+            plt.savefig(filename)
 
 tb.close()
-torch.save(g.state_dict(), os.path.join(wd, "gen_gr_ResN_LR1e-4_WD1e-3_256_" + str(e) + ".pth"))
-torch.save(d.state_dict(), os.path.join(wd, "dis_gr_ResN_LR1e-4_WD1e-3_256_" + str(e) + ".pth"))
+folder_name = os.path.join(wd,dirname)
+torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
+            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + str(
+            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
 print("finished training")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

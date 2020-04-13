@@ -149,10 +149,10 @@ batch_size = 512
 image_size = [64, 64]
 assert len(image_size) == 2
 
-wd = '/home/enterprise.internal.city.ac.uk/adbb120/705'
-if not os.path.exists(os.path.join(wd, 'checkpoints')):
-	os.mkdir(os.path.join(wd, 'checkpoints'))
-checkpoints = os.path.join(wd, 'checkpoints')
+wd = os.getcwd()
+#if not os.path.exists(os.path.join(wd, 'checkpoints')):
+#	os.mkdir(os.path.join(wd, 'checkpoints'))
+#checkpoints = os.path.join(wd, 'checkpoints')
 
 # number of generator feature filters
 ngf = 64
@@ -167,7 +167,7 @@ num_epochs = 3000
 
 # dataset and dataloader
 dataset_pars = {'img_size': image_size,
-				'img_data': '/home/enterprise.internal.city.ac.uk/adbb120/705/cars3_green'}
+				'img_data': '/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green'}
 obs = Cars(**dataset_pars)
 dataloader_pars = {'batch_size': batch_size, 'shuffle': True}
 dataloader = data.DataLoader(obs, **dataloader_pars)

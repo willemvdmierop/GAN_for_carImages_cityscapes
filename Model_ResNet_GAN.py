@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+# Code made from different sources :
+# https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/master/model_resnet.py
+# https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -9,10 +11,10 @@ class BasicBlock(nn.Module):
     def __init__(self, in_planes, planes, stride=1):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        nn.init.xavier_uniform_(self.conv1.weight.data, 1.)
+        nn.init.orthogonal_(self.conv1.weight.data, 1.)
         self.BatchN1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        nn.init.xavier_uniform_(self.conv2.weight.data, 1.)
+        nn.init.orthogonal_(self.conv2.weight.data, 1.)
         self.BatchN2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
@@ -37,7 +39,7 @@ class ResNet_Discriminator(nn.Module):
         self.channels = kwargs['channels']
 
         self.conv1 = nn.Conv2d(self.channels, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)
-        nn.init.xavier_uniform_(self.conv1.weight.data, 1.)
+        nn.init.orthogonal_(self.conv1.weight.data, 1.)
         self.BatchN1 = nn.BatchNorm2d(64)
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=2)
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
@@ -61,7 +63,7 @@ class ResNet_Discriminator(nn.Module):
         out = self.layer4(out)
         out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
-        out = torch.sigmoid(self.linear(out)) #todo this sigmoid might be wrong check !
+        out = torch.sigmoid(self.linear(out))
         return out
 
 
@@ -72,10 +74,10 @@ class Generator_BasicBlock(nn.Module):
         super(Generator_BasicBlock, self).__init__()
         self.convTrans1 = nn.ConvTranspose2d(in_planes, planes, kernel_size=kernel, stride=stride, padding=1,
                                              bias=False)
-        nn.init.xavier_uniform_(self.convTrans1.weight.data, 1.)
+        nn.init.orthogonal_(self.convTrans1.weight.data, 1.)
         self.BatchN1 = nn.BatchNorm2d(planes)
         self.convTrans2 = nn.ConvTranspose2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        nn.init.xavier_uniform_(self.convTrans2.weight.data, 1.)
+        nn.init.orthogonal_(self.convTrans2.weight.data, 1.)
         self.BatchN2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
@@ -108,7 +110,7 @@ class ResNet_Generator(nn.Module):
         self.factor = 8
         self.convTrans1 = nn.ConvTranspose2d(self.z_dim, self.in_planes * 8, kernel_size=4, stride=1, padding=0,
                                              bias=False)
-        nn.init.xavier_uniform_(self.convTrans1.weight.data, 1.)
+        nn.init.orthogonal_(self.convTrans1.weight.data, 1.)
         self.BatchN1 = nn.BatchNorm2d(self.in_planes * 8)
         self.layer1 = self._make_layer(block, self.in_planes * 8, num_blocks[0], stride=2)
         self.layer2 = self._make_layer(block, self.in_planes * 4, num_blocks[1], stride=2)
