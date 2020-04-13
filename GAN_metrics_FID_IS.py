@@ -211,20 +211,20 @@ path_real = "/Users/willemvandemierop/Google Drive/DL Classification (705)/GANs/
 path_fake = "/Users/willemvandemierop/Google Drive/DL Classification (705)/GANs/Fake_images_Green"
 
 ######################################## parameters ############################
-batch_size = 1,
-cuda = False,
+batch_size = 1
+cuda = False
 dims = 2048
 saving_name_metrics = "Metrics_GAN.csv"
 epoch_start, epoch_end = 500, 4000
 ########################################## models ##############################
 block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
-model = InceptionV3([block_idx])
+model_FID = InceptionV3([block_idx])
 
 inception_model = inception_v3(pretrained=True, transform_input=False).to(device)
 inception_model.eval()
 
 ################################## statistics real images ######################
-mu_real, sigma_real = statistics_real_images(path_real, batch_size, model)
+mu_real, sigma_real = statistics_real_images(path_real, batch_size, model=model_FID)
 
 ################################## computation of metrics ######################
 for filename in sorted(os.listdir(path_real)):
@@ -242,7 +242,7 @@ for f in sorted(os.listdir(path_fake)):
     path_generated_images = os.path.join(path_fake, f)
     print(path_generated_images)
     FID = calculate_FID_compared_to_real(path=path_generated_images, mu_real=mu_real, sigma_real=sigma_real,
-                                         model=model, batch_size=1, cuda=cuda, dims=dims)
+                                         model=model_FID, batch_size=1, cuda=cuda, dims=dims)
     print("The FID for our generated images is {}, calculation of FID took {} seconds".format(FID, time.time() - start))
     IS_mean, IS_std = inception_score(path_imgs=path_generated_images, inception_model=inception_model, cuda=cuda,
                                       batch_size=batch_size)
