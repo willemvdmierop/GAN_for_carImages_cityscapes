@@ -260,7 +260,7 @@ df.to_csv(saving_name_metrics)
 
 epochs = np.arange(epoch_start, epoch_end, 100)
 x = epochs[:(len(FID_list))]
-fig, ax = plt.subplots(3,1,figsize = (20,20))
+fig, ax = plt.subplots(2,1,figsize = (20,20))
 
 ax[0].plot(x,df['FID'])
 ax[0].set_title('FID Score of generated images')
@@ -271,9 +271,4 @@ ax[1].plot(x,df['Inception Score'])
 ax[1].set_title('Inception Score of generated images')
 ax[1].set_xlabel("Epochs")
 ax[1].set_ylabel("IS")
-
-ax[2].plot(x,df['IS std'])
-ax[2].set_title('Inception Score std of generated images')
-ax[2].set_xlabel("Epochs")
-ax[2].set_ylabel("IS std")
 
