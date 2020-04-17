@@ -44,6 +44,7 @@ class Cars(data.Dataset):
 		X = self.load_img(idx)
 		return idx, X
 
+# snconv2d and SelfAttn original from: https://github.com/ajbrock/BigGAN-PyTorch
 def snconv2d(eps = 1e-12, **kwargs):
 	return nn.utils.spectral_norm(nn.Conv2d(**kwargs), eps = eps)
 
