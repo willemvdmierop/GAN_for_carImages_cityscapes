@@ -216,7 +216,7 @@ path_fake = os.path.join(wd,"gen_images_green_DC")
 batch_size = 1
 cuda = True
 dims = 2048
-saving_name_metrics = "Metrics_GAN.csv"
+saving_name_metrics = "Metrics_DCGAN.csv"
 epoch_start, epoch_end = 500, 4000
 ########################################## models ##############################
 block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
