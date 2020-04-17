@@ -249,6 +249,7 @@ for e in range(num_epochs):
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
+            plt.imshow(out)
             filename = wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
             plt.savefig(filename)
 

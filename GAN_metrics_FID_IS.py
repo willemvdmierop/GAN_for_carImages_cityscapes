@@ -13,7 +13,7 @@ from torchvision.models.inception import inception_v3
 import pandas as pd
 import numpy as np
 from scipy.stats import entropy
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 try:
     from tqdm import tqdm
@@ -44,11 +44,11 @@ def get_activations(files, model, batch_size=50, dims=2048, cuda=False, verbose=
         # reshape images to (n_images, 3, height, width)
         images = images.transpose((0, 3, 1, 2))
         images /= 255
-        batch = torch.from_numpy(images).type(torch.FloatTensor)
+        batch = torch.from_numpy(images).type(torch.cuda.FloatTensor)
         if cuda:
-            batch = batch.cuda()
+            batch = batch.to(device)
         pred = model(batch)[0]
-        # If model output is not scaler, apply global spatial average pooling. 
+        # If model output is not scaler, apply global spatial average pooling.
         # This happens if dimensionality not equal to 2048
         if pred.size(2) != 1 or pred.size(3) != 1:
             pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
@@ -105,9 +105,9 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
 def calculate_FID_given_paths(path1, path2, batch_size, cuda, dims):
     if not os.path.exists(path1):
-        raise RuntimeError(f'Invalid path: {path1}')
+        raise RuntimeError("Invalid path: {path1}")
     if not os.path.exists(path2):
-        raise RuntimeError(f'Invalid path: {path2}')
+        raise RuntimeError("Invalid path: {path2}")
 
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
     model = InceptionV3([block_idx])
@@ -156,6 +156,7 @@ def inception_score(path_imgs, inception_model, cuda=True, batch_size=32, resize
     def get_pred(x):
         if resize:
             x = up(x)
+        x = x.to(device)
         x = inception_model(x)
         return F.softmax(x).data.cpu().numpy()
 
@@ -189,7 +190,7 @@ def inception_score(path_imgs, inception_model, cuda=True, batch_size=32, resize
 # print("IS mean",IS_mean, "IS_std", IS_std)
 def calculate_FID_compared_to_real(path, mu_real, sigma_real, model, batch_size, cuda, dims):
     if not os.path.exists(path):
-        raise RuntimeError(f'Invalid path: {path}')
+        raise RuntimeError("this is a wrong path")
 
     model = model
     if cuda:
@@ -207,21 +208,24 @@ def statistics_real_images(path, batch_size, model, cuda):
     mu1, sigma1 = compute_statistics_of_path(path, model, batch_size, dims, cuda)
     return mu1, sigma1
 
-path_real = "/Users/willemvandemierop/Google Drive/DL Classification (705)/GANs/Real_images_Green"
-path_fake = "/Users/willemvandemierop/Google Drive/DL Classification (705)/GANs/Fake_images_Green"
+wd = os.getcwd()
+path_real = os.path.join(wd,"Real_images_Green")
+path_fake = os.path.join(wd,"gen_images_green_DC")
 
 ######################################## parameters ############################
 batch_size = 1
-cuda = False
+cuda = True
 dims = 2048
 saving_name_metrics = "Metrics_GAN.csv"
 epoch_start, epoch_end = 500, 4000
 ########################################## models ##############################
 block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 model_FID = InceptionV3([block_idx])
+model_FID = model_FID.to(device)
 
 inception_model = inception_v3(pretrained=True, transform_input=False).to(device)
 inception_model.eval()
+inception_model = inception_model.to(device)
 
 ################################## statistics real images ######################
 mu_real, sigma_real = statistics_real_images(path_real, batch_size, model=model_FID, cuda=cuda)
