@@ -62,9 +62,10 @@ class Cars(data.Dataset):
 
 wd = os.getcwd()
 batch_size, image_size = 256, [64, 64]
+batch_size_str = str(batch_size)
 assert len(image_size) == 2
 # Epochs
-num_epochs = 2501
+num_epochs = 2
 # number of channels
 nc = 3
 # latent space (z) size: G input
@@ -89,9 +90,9 @@ if ResN34: ResNet_str = 'ResNet34'
 dirname = 'model_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-path_img = os.path.join(wd, "cars3_green")
+#path_img = os.path.join(wd, "cars3_green")
 # this is just for now, use path above for server training
-#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -174,25 +175,29 @@ loss = loss.to(device)
 epochs = 0
 folder_name = os.path.join(wd, dirname)
 
+
 if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
+    print("loading pretrained optimizers")
     checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
     optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
     optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
     epochs = checkpoint['epoch'] + 1
 
-if os.path.exists(os.path.join(folder_name, "gen_gr_ResN_batch_" + str(batch_size) + "_wd"
+if os.path.exists(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
     print("Loading pretrained generator")
-    weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + str(batch_size) + "_wd"
+
+    weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
     g.load_state_dict(weights_g)
 
-if os.path.exists(os.path.join(folder_name, "dis_gr_ResN_batch_" + str(batch_size) + "_wd"
+if os.path.exists(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
     print("Loading pretrained discriminator")
-    weights_g = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + str(batch_size) + "_wd"
+    weights_d = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
-    g.load_state_dict(weights_g)
+    d.load_state_dict(weights_d)
+
 
 
 img_list = []
@@ -254,14 +259,11 @@ for e in range(epochs, num_epochs):
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
                     "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
         ## let's save the weights
-        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         print("saved intermediate weights")
         ## let's load the model to generate images.
-        weights = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        weights = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         args = {'latentVect': 100, 'FeaGen': 128, 'nc': 3}
         if ResN18:
             model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [2, 2, 2, 2], **g_pars)
@@ -282,9 +284,7 @@ for e in range(epochs, num_epochs):
 
 tb.close()
 torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
-                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,checkpoint.pth))
-torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
+torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
 print("finished training")
