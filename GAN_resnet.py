@@ -172,13 +172,14 @@ tb = SummaryWriter(comment="ResNet_GAN_batch" + str(batch_size) + "_wd" + w_deca
 loss = BCELoss()
 loss = loss.to(device)
 epochs = 0
-if os.path.exists(os.path.join(dirname, 'checkpoint.pth')):
+folder_name = os.path.join(wd, dirname)
+
+if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
     checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
     optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
     optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
     epochs = checkpoint['epoch'] + 1
 
-folder_name = os.path.join(wd, dirname)
 if os.path.exists(os.path.join(folder_name, "gen_gr_ResN_batch_" + str(batch_size) + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
     print("Loading pretrained generator")
@@ -251,7 +252,7 @@ for e in range(epochs, num_epochs):
     if e % 100 == 0:
         ## let's save the optimizers
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
-                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,checkpoint.pth))
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
         ## let's save the weights
         torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + str(
             batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))

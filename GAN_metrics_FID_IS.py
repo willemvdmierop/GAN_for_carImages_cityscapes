@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import entropy
 import matplotlib.pyplot as plt
-
+from PIL import Image as PILImage
 try:
     from tqdm import tqdm
 except ImportError:
@@ -40,9 +40,18 @@ def get_activations(files, model, batch_size=50, dims=2048, cuda=False, verbose=
     for i in tqdm(range(0, len(files), batch_size)):
         start = i
         end = i + batch_size
-        images = np.array([imread(str(f))[:, :, :3].astype(np.float32) for f in files[start:end]])
+        #images = np.array([imread(str(f))[:, :, :3].astype(np.float32) for f in files[start:end]])
         # reshape images to (n_images, 3, height, width)
-        images = images.transpose((0, 3, 1, 2))
+        #images = images.transpose((0, 3, 1, 2))
+        images = []
+        for f in files[start:end]:
+            img = PILImage.open(f)
+            img = img.convert("RGB")
+            img = img.resize((128, 128))
+            img = np.array(img, dtype='float').transpose(2, 0, 1)
+            # print(img.shape)
+            images.append(img)
+        images = np.array(images)
         images /= 255
         batch = torch.from_numpy(images).type(torch.cuda.FloatTensor)
         if cuda:
