@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 
 
-df = pd.read_csv("/GAN_for_carImages_cityscapes/Metrics_DCGAN.csv")
-epoch_start = 600
+df = pd.read_csv("Metrics_GAN_ResNet.csv")
+epoch_start = 0
 epoch_end = 2100
 epochs = np.arange(epoch_start, epoch_end, 100)
 x = epochs[:(len(df))]
