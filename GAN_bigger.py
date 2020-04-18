@@ -133,7 +133,7 @@ class Discriminator(nn.Module):
         return features
 
 
-batch_size = 512
+batch_size = 256
 FeaGen = 64
 image_size = [64, 64]
 assert len(image_size) == 2
@@ -145,7 +145,7 @@ nc = 3
 latentVect = 100
 #
 FeaDis = 64
-num_epochs = 2001
+num_epochs = 3501
 path_img = os.path.join(wd, "cars3_green")
 #path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 # dataset and dataloader
@@ -173,16 +173,9 @@ g_pars = {'latentVect': latentVect, 'FeaGen': FeaGen, 'nc': nc}
 d_pars = {'FeaDis': FeaDis, 'nc': nc}
 
 # models
-pretrained = False
 start_epochs = 0
 g = Generator(**g_pars)
 d = Discriminator(**d_pars)
-if pretrained:
-    print("\nloading weights from previously trained discriminator and generator\n")
-    weights_g = torch.load(os.path.join(wd, "****"))
-    g.load_state_dict(weights_g)
-    weights_d = torch.load(os.path.join(wd, "****"))
-    d.load_state_dict(weights_d)
 g = g.to(device)
 d = d.to(device)
 
@@ -205,6 +198,29 @@ tb = SummaryWriter(comment="DC_GAN_Bigger_batch" + str(batch_size) + "_wd" + w_d
 loss = BCELoss()
 loss = loss.to(device)
 # main train loop
+epochs = 0
+folder_name = os.path.join(wd, dirname)
+
+if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
+    checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
+    optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
+    optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
+    epochs = checkpoint['epoch'] + 1
+
+if os.path.exists(os.path.join(folder_name, "gen_gr_Big_DC_batch_" + str(batch_size) + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
+    print("Loading pretrained generator")
+    weights_g = torch.load(os.path.join(folder_name, "gen_gr_Big_DC_batch_" + str(batch_size) + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
+    g.load_state_dict(weights_g)
+
+if os.path.exists(os.path.join(folder_name, "dis_gr_Big_DC_batch_" + str(batch_size) + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
+    print("Loading pretrained discriminator")
+    weights_g = torch.load(os.path.join(folder_name, "dis_gr_Big_DC_batch_" + str(batch_size) + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
+    g.load_state_dict(weights_g)
+
 for e in range(start_epochs, num_epochs):
     for id, data in dataloader:
         # print(id)
@@ -252,7 +268,8 @@ for e in range(start_epochs, num_epochs):
         tb.add_scalar('Total Loss', total_loss, e)
 
     if e % 100 == 0:
-        folder_name = os.path.join(wd, dirname)
+        torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
         torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_Big_DC_batch_" + str(
             batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_Big_DC_batch_" + str(
@@ -276,7 +293,8 @@ for e in range(start_epochs, num_epochs):
             plt.savefig(filename)
 
 tb.close()
-folder_name = os.path.join(wd, dirname)
+torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
 torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_Big_DC_batch_" + str(
     batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
 torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_Big_DC_batch_" + str(

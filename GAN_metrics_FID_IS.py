@@ -222,7 +222,7 @@ path_real = os.path.join(wd,"Real_images_Green")
 path_fake = os.path.join(wd,"gen_images_green_DC")
 
 ######################################## parameters ############################
-batch_size = 1
+batch_size = 5
 cuda = True
 dims = 2048
 saving_name_metrics = "Metrics_DCGAN.csv"
@@ -255,7 +255,7 @@ for f in sorted(os.listdir(path_fake)):
     path_generated_images = os.path.join(path_fake, f)
     print(path_generated_images)
     FID = calculate_FID_compared_to_real(path=path_generated_images, mu_real=mu_real, sigma_real=sigma_real,
-                                         model=model_FID, batch_size=1, cuda=cuda, dims=dims)
+                                         model=model_FID, batch_size=batch_size, cuda=cuda, dims=dims)
     print("The FID for our generated images is {}, calculation of FID took {} seconds".format(FID, time.time() - start))
     IS_mean, IS_std = inception_score(path_imgs=path_generated_images, inception_model=inception_model, cuda=cuda,
                                       batch_size=batch_size)
