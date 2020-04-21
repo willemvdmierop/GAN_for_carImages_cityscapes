@@ -150,8 +150,8 @@ lrate_str = '0001'
 
 # ====================================== dataset and dataloader ====================================== #
 
-# path_img = os.path.join(wd, "cars3_green")
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
+path_img = os.path.join(wd, "cars3_green")
+# path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
