@@ -20,7 +20,7 @@ if torch.cuda.is_available():
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
-# ================================================== Dataset ============================================== #
+# ================================================== Dataset ============================================ #
 class Cars(data.Dataset):
     def __init__(self, **kwargs):
         self.img_data = kwargs['img_data']

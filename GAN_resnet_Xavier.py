@@ -21,7 +21,7 @@ device = torch.device('cpu')
 if torch.cuda.is_available():
     device = torch.device('cuda')
 
-
+# ================================================== Dataset ============================================== #
 class Cars(data.Dataset):
     def __init__(self, **kwargs):
         self.img_data = kwargs['img_data']
@@ -54,7 +54,7 @@ class Cars(data.Dataset):
         return idx, X
 
 
-#################################### Train Parameters for Dis and GEN ################################
+# ========================================= Training Parameters ======================================== #
 
 #################################
 ### Training Hyper-Parameters ###
@@ -116,13 +116,7 @@ if ResN34:
 # weights_d = torch.load(os.path.join(wd, "dis_gr_ResN_LR1e-4_WD1e-3_Batch256_2000.pth"))
 # d.load_state_dict(weights_d)
 d = d.to(device)
-print(d)
 
-total_d = 0
-for _n, _par in d.state_dict().items():
-    total_d += _par.numel()
-
-print("parameters discriminator", total_d)
 # ResNet18: parameters generator 14689046
 if ResN18:
     g = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock,[2,2,2,2], **g_pars)
@@ -132,17 +126,23 @@ if ResN34:
 # weights_g = torch.load(os.path.join(wd, "gen_gr_ResN_LR1e-4_WD1e-3_Batch256_2000.pth"))
 # g.load_state_dict(weights_g)
 g = g.to(device)
-print(g)
 
+# =========================================== Print parameters of models ===================================== #
+'''
+print(g)
 total_g = 0
 for _n, _par in g.state_dict().items():
     total_g += _par.numel()
 
 print("parameters generator", total_g)
+print(d)
+total_d = 0
+for _n, _par in d.state_dict().items():
+    total_d += _par.numel()
+print("parameters discriminator", total_d)
+'''
 
-
-print('# ' + '=' * 45 + ' Training ' + '=' * 45 + ' #')
-# ============================================= Training ============================================= #
+# =============================================== Optimizers ========================================= #
 # create labels
 real_label = 1
 generated_label = 0
@@ -153,13 +153,9 @@ optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 if not os.path.exists(wd + '/gen_images_green_' + ResNet_str):
     os.mkdir(wd + '/gen_images_green_' + ResNet_str)
 
-tb = SummaryWriter(comment=ResNet_str + "_GAN_Orthogonal_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "epochs_" + str(num_epochs))
-loss = BCELoss()
-loss = loss.to(device)
+# =========================================== Pretrained Loading ===================================== #
 epochs = 0
 folder_name = os.path.join(wd, dirname)
-
-
 if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
     print("loading pretrained optimizers")
     checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
@@ -181,6 +177,10 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
     except:
         raise FileNotFoundError("could not load Discriminator")
 
+# ============================================= Training ============================================= #
+tb = SummaryWriter(comment=ResNet_str + "_GAN_Orthogonal_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "epochs_" + str(num_epochs))
+loss = BCELoss()
+loss = loss.to(device)
 
 img_list = []
 # main train loop

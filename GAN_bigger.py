@@ -15,7 +15,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
+device = torch.device('cpu')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
 
+
+# ================================================== Dataset ============================================ #
 class Cars(data.Dataset):
     def __init__(self, **kwargs):
         self.img_data = kwargs['img_data']
@@ -47,7 +52,7 @@ class Cars(data.Dataset):
         X = self.load_img(idx)
         return idx, X
 
-
+# ================================================= Generator =========================================== #
 class Generator(nn.Module):
     def __init__(self, **kwargs):
         super(Generator, self).__init__()
@@ -89,7 +94,7 @@ class Generator(nn.Module):
     def forward(self, input):
         return self.main(input)
 
-
+# ============================================== Discriminator ========================================== #
 # Discriminator takes an 'image': object dimensionality batch_size x 3 x H x W
 class Discriminator(nn.Module):
     def __init__(self, **kwargs):
@@ -133,42 +138,48 @@ class Discriminator(nn.Module):
         return features
 
 
+# ========================================= Training Parameters ======================================== #
 batch_size = 256
 batch_size_str = str(batch_size)
-FeaGen = 64
 image_size = [64, 64]
 assert len(image_size) == 2
 wd = os.getcwd()
-#wd = '/cars5'
 # number of channels
 nc = 3
 # latent space (z) size: G input
 latentVect = 100
-#
+# Features discriminator
 FeaDis = 64
+# Features generator
+FeaGen = 64
+# epochs
 num_epochs = 3501
-path_img = os.path.join(wd, "cars3_green")
-#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
-# dataset and dataloader
+# learning rate
+lrate = 1e-4
+# optimizer parameters
+optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
+# strings for saving
+w_decay_str = '001'
+lrate_str = '0001'
+# ============================================= Dataset path ========================================= #
+#path_img = os.path.join(wd, "cars3_green")
+# this is just for now, use path above for server training
+path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+for filename in sorted(os.listdir(path_img)):
+    if filename == '.DS_Store':
+        os.remove(path_img + "/" + filename)
+# ====================================== dataset and dataloader ====================================== #
 dataset_pars = {'img_size': image_size, 'img_data': path_img}
 obs = Cars(**dataset_pars)
 dataloader_pars = {'batch_size': batch_size, 'shuffle': True}
 dataloader = data.DataLoader(obs, **dataloader_pars)
 # get the right device
 # optimizers
-lrate = 1e-4
-optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
-w_decay_str = '001'
-lrate_str = '0001'
+
 
 dirname = 'model_Bigger_DCGAN_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-device = torch.device('cpu')
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-
-print(device)
 # instantiate models and put them on CUDA
 g_pars = {'latentVect': latentVect, 'FeaGen': FeaGen, 'nc': nc}
 d_pars = {'FeaDis': FeaDis, 'nc': nc}
@@ -180,9 +191,21 @@ d = Discriminator(**d_pars)
 g = g.to(device)
 d = d.to(device)
 
+# =========================================== Print parameters of models ===================================== #
+'''
 print(g)
-print(d)
+total_g = 0
+for _n, _par in g.state_dict().items():
+    total_g += _par.numel()
 
+print("parameters generator", total_g)
+print(d)
+total_d = 0
+for _n, _par in d.state_dict().items():
+    total_d += _par.numel()
+print("parameters discriminator", total_d)
+'''
+# =============================================== Optimizers ========================================= #
 # create labels
 real_label = 1
 generated_label = 0
@@ -190,7 +213,36 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-image_folder_name = "Generated_images_gr_DC_Bigger"
+# =========================================== Pretrained Loading ===================================== #
+# main train loop
+epochs = 0
+folder_name = os.path.join(wd, dirname)
+if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
+    print("loading pretrained optimizers")
+    checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
+    optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
+    optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
+    epochs = checkpoint['epoch'] + 1
+    try:
+        weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
+        g.load_state_dict(weights_g)
+        print("Loaded intermediate weights for generator")
+    except:
+        raise FileNotFoundError("could not load intermediate weights Generator")
+
+    try:
+        weights_d = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
+        d.load_state_dict(weights_d)
+        print("Loaded intermediate weights for Discriminator")
+    except:
+        raise FileNotFoundError("could not load intermediate weights Discriminator")
+
+
+# ================================================= Training ================================================== #
+
+image_folder_name = "Generated_images_gr_DCGAN_Bigger"
 if not os.path.exists(wd + '/' + image_folder_name):
     os.mkdir(wd + '/' + image_folder_name)
 # loss function
@@ -198,36 +250,7 @@ if not os.path.exists(wd + '/' + image_folder_name):
 tb = SummaryWriter(comment="DC_GAN_Bigger_batch" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str)
 loss = BCELoss()
 loss = loss.to(device)
-# main train loop
-epochs = 0
-folder_name = os.path.join(wd, dirname)
-
-if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
-    print("loading pretrained optimizers")
-    checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
-    optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
-    optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
-    epochs = checkpoint['epoch'] + 1
-
-print("started on epoch:", epochs)
-if os.path.exists(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
-    print("Loading pretrained generator")
-
-    weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
-    g.load_state_dict(weights_g)
-
-if os.path.exists(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
-    print("Loading pretrained discriminator")
-    weights_d = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
-    d.load_state_dict(weights_d)
-
-
-
-for e in range(start_epochs, num_epochs):
+for e in range(epochs, num_epochs):
     for id, data in dataloader:
         # print(id)
         # first, train the discriminator
