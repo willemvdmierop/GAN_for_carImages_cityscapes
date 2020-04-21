@@ -20,7 +20,7 @@ if torch.cuda.is_available():
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
-
+# ================================================== Dataset ============================================== #
 class Cars(data.Dataset):
     def __init__(self, **kwargs):
         self.img_data = kwargs['img_data']
@@ -53,6 +53,7 @@ class Cars(data.Dataset):
         return idx, X
 
 
+# ================================================= Generator =========================================== #
 class Generator(nn.Module):
     def __init__(self, **kwargs):
         super(Generator, self).__init__()
@@ -88,7 +89,7 @@ class Generator(nn.Module):
     def forward(self, input):
         return self.main(input)
 
-
+# ============================================== Discriminator ========================================== #
 # Discriminator takes an 'image': object dimensionality batch_size x 3 x H x W
 class Discriminator(nn.Module):
     def __init__(self, **kwargs):
