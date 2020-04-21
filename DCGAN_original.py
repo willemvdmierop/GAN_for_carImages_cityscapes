@@ -13,6 +13,10 @@ from torch.utils import data
 from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 
+device = torch.device('cpu')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
@@ -52,29 +56,30 @@ class Cars(data.Dataset):
 class Generator(nn.Module):
     def __init__(self, **kwargs):
         super(Generator, self).__init__()
-        self.nz = kwargs['nz']
-        self.ngf = kwargs['ngf']
+        self.latentVect = kwargs['latentVect']
+        self.FeaGen = kwargs['FeaGen']
         self.nc = kwargs['nc']
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(in_channels=self.nz, out_channels=self.ngf * 8, kernel_size=4, stride=1, padding=0,
+            nn.ConvTranspose2d(in_channels=self.latentVect, out_channels=self.FeaGen * 8, kernel_size=4, stride=1,
+                               padding=0,
                                bias=False),
-            nn.BatchNorm2d(self.ngf * 8),
+            nn.BatchNorm2d(self.FeaGen * 8),
             nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(self.ngf * 8, self.ngf * 4, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(self.ngf * 4),
+            # state size. (FeaGen*8) x 4 x 4
+            nn.ConvTranspose2d(self.FeaGen * 8, self.FeaGen * 4, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(self.FeaGen * 4),
             nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(self.ngf * 4, self.ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.ngf * 2),
+            # state size. (FeaGen*4) x 8 x 8
+            nn.ConvTranspose2d(self.FeaGen * 4, self.FeaGen * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.FeaGen * 2),
             nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(self.ngf * 2, self.ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.ngf),
+            # state size. (FeaGen*2) x 16 x 16
+            nn.ConvTranspose2d(self.FeaGen * 2, self.FeaGen, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.FeaGen),
             nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(self.ngf, self.nc, 4, 2, 1, bias=False),
+            # state size. (FeaGen) x 32 x 32
+            nn.ConvTranspose2d(self.FeaGen, self.nc, 4, 2, 1, bias=False),
             nn.Tanh()
 
             # state size. (nc) x 64 x 64
@@ -88,26 +93,26 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, **kwargs):
         super(Discriminator, self).__init__()
-        self.ndf = kwargs['ndf']
+        self.FeaDis = kwargs['FeaDis']
         self.nc = kwargs['nc']
         self.main = nn.Sequential(
             # input is (nc) x 64 x 64
-            nn.Conv2d(in_channels=self.nc, out_channels=self.ndf, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=self.nc, out_channels=self.FeaDis, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            nn.Conv2d(self.ndf, self.ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.ndf * 2),
+            # state size. (FeaDis) x 32 x 32
+            nn.Conv2d(self.FeaDis, self.FeaDis * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.FeaDis * 2),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(self.ndf * 2, self.ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.ndf * 4),
+            # state size. (FeaDis*2) x 16 x 16
+            nn.Conv2d(self.FeaDis * 2, self.FeaDis * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.FeaDis * 4),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(self.ndf * 4, self.ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.ndf * 8),
+            # state size. (FeaDis*4) x 8 x 8
+            nn.Conv2d(self.FeaDis * 4, self.FeaDis * 8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.FeaDis * 8),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(self.ndf * 8, out_channels=1, kernel_size= 4, stride= 1, padding= 0, bias=False),
+            # state size. (FeaDis*8) x 4 x 4
+            nn.Conv2d(self.FeaDis * 8, out_channels=1, kernel_size=4, stride=1, padding=0, bias=False),
             nn.Sigmoid()
         )
         self.classifier = nn.Sequential(
@@ -122,61 +127,54 @@ class Discriminator(nn.Module):
         return features
 
 
-batch_size = 256
-ngf = 64
-image_size = [64, 64]
-assert len(image_size) == 2
+# ========================================= Training Parameters ======================================== #
 wd = os.getcwd()
+batch_size, image_size = 256, [64, 64]
+batch_size_str = str(batch_size)
+assert len(image_size) == 2
+# Epochs
+num_epochs = 4501
 # number of channels
 nc = 3
 # latent space (z) size: G input
-nz = 100
-# 
-ndf = 64
-num_epochs = 2001
-#path_img = os.path.join(wd, "cars3_green")
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
-# dataset and dataloader
-dataset_pars = {'img_size': image_size, 'img_data': path_img}
-obs = Cars(**dataset_pars)
-dataloader_pars = {'batch_size': batch_size, 'shuffle': True}
-dataloader = data.DataLoader(obs, **dataloader_pars)
-# get the right device
+latentVect = 100
+# Feature vector of Discriminator
+FeaDis = 64
+# Feature vector of generator
+FeaGen = 64
 # optimizers
 lrate = 1e-4
 optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
 w_decay_str = '001'
 lrate_str = '0001'
 
+# ====================================== dataset and dataloader ====================================== #
+
+# path_img = os.path.join(wd, "cars3_green")
+path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
+for filename in sorted(os.listdir(path_img)):
+    if filename == '.DS_Store':
+        os.remove(path_img + "/" + filename)
+
+dataset_pars = {'img_size': image_size, 'img_data': path_img}
+obs = Cars(**dataset_pars)
+dataloader_pars = {'batch_size': batch_size, 'shuffle': True}
+dataloader = data.DataLoader(obs, **dataloader_pars)
+
+# =============================== Instantiate models and put them on CUDA ============================ #
+
 dirname = 'model_DCGAN_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-device = torch.device('cpu')
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-
-print(device)
-# instantiate models and put them on CUDA
-g_pars = {'nz': nz, 'ngf': ngf, 'nc': nc}
-d_pars = {'ndf': ndf, 'nc': nc}
-
-# models
-pretrained = True
-start_epochs = 0
+g_pars = {'latentVect': latentVect, 'FeaGen': FeaGen, 'nc': nc}
+d_pars = {'FeaDis': FeaDis, 'nc': nc}
+# initialize the models
 g = Generator(**g_pars)
 d = Discriminator(**d_pars)
-if pretrained:
-    print("\nloading weights from previously trained discriminator and generator\n")
-    weights_g = torch.load(os.path.join(wd, "gen_gr_DC_batch_195_wd001_lr0001_e1499.pth"))
-    g.load_state_dict(weights_g)
-    weights_d = torch.load(os.path.join(wd, "dis_gr_DC_batch_195_wd001_lr0001_e1499.pth"))
-    d.load_state_dict(weights_d)
 g = g.to(device)
 d = d.to(device)
 
-print(g)
-print(d)
-
+# =============================================== Optimizers ========================================= #
 # create labels
 real_label = 1
 generated_label = 0
@@ -184,17 +182,62 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-if not os.path.exists(wd + '/gen_images_green_DC'):
-    os.mkdir(wd + '/gen_images_green_DC')
+if not os.path.exists(wd + '/gen_images_gr_DCGAN'):
+    os.mkdir(wd + '/gen_images_gr_DCGAN')
+
+# =========================================== Pretrained Loading ===================================== #
+epochs = 0
+folder_name = os.path.join(wd, dirname)
+if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
+    print("loading pretrained optimizers")
+    checkpoint = torch.load(os.path.join(dirname, 'checkpoint.pth'))
+    optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
+    optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
+    epochs = checkpoint['epoch'] + 1
+    try:
+
+        weights_g = torch.load(os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str +
+                                            "_lr" + lrate_str + "_e" + str(epochs - 1) + ".pth"))
+        g.load_state_dict(weights_g)
+        print("Loaded pretrained generator")
+    except:
+        raise FileNotFoundError("could not load Generator")
+    try:
+        weights_g = torch.load(os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str +
+                                            "_lr" + lrate_str + "_e" + str(epochs - 1) + ".pth"))
+        g.load_state_dict(weights_g)
+        print("Loaded pretrained generator")
+    except:
+        raise FileNotFoundError("could not load Generator")
+
+
+# =========================================== Print parameters of models ===================================== #
+'''
+print(g)
+total_g = 0
+for _n, _par in g.state_dict().items():
+    total_g += _par.numel()
+
+print("parameters generator", total_g)
+print(d)
+total_d = 0
+for _n, _par in d.state_dict().items():
+    total_d += _par.numel()
+print("parameters discriminator", total_d)
+'''
+
+
+
+# ================================================= Training ================================================== #
 # loss function
-# loss = BCEWithLogitsLoss()
 tb = SummaryWriter(comment="DC_GAN_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str)
 loss = BCELoss()
 loss = loss.to(device)
 # main train loop
-for e in range(start_epochs, num_epochs):
+if epochs >= num_epochs:
+    raise SyntaxError("we have already trained for this amount of epochs")
+for e in range(epochs, num_epochs):
     for id, data in dataloader:
-        # print(id)
         # first, train the discriminator
         d.zero_grad()
         g.zero_grad()
@@ -210,7 +253,7 @@ for e in range(start_epochs, num_epochs):
         loss_t = loss(predict_d, labels_t)
         loss_t.backward()
         # generator input and output
-        z = torch.randn(batch_size, nz, 1, 1, device=device)
+        z = torch.randn(batch_size, latentVect, 1, 1, device=device)
         h = g(z)
         # all labels are 0s
         labels_g = torch.zeros(batch_size).unsqueeze_(0)
@@ -238,47 +281,35 @@ for e in range(start_epochs, num_epochs):
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    if e % 100 == 0 and e > 500:
-        folder_name = os.path.join(wd, dirname)
-        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+    if e % 100 == 0:
+        ## let's save the optimizers
+        torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
+        ## let's save the weights of the models
+        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         print("saved intermediate weights")
-        weights = torch.load(os.path.join(folder_name, "gen_gr_DC_batch_" + str(
-            batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        ## let's load the model to generate images.
+        weights = torch.load(os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
         args = {'latentVect': 100, 'FeaGen': 128, 'nc': 3}
         model = Generator(**g_pars)
         model.load_state_dict(weights)
         for i in range(5):
-            if not os.path.exists(wd + "/gen_images_green_DC/" + "hallucinated_" + str(e)):
-                os.mkdir(wd + "/gen_images_green_DC/" + "hallucinated_" + str(e))
+            if not os.path.exists(wd + "/gen_images_gr_DCGAN/" + "hallucinated_" + str(e)):
+                os.mkdir(wd + "/gen_images_gr_DCGAN/" + "hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1)
             out = model(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_green_DC/" + "hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
+            filename = wd + "/gen_images_gr_DCGAN/" + "hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
             plt.savefig(filename)
 
 tb.close()
-folder_name = os.path.join(wd, dirname)
-torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + str(
-    batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + str(
-    batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+## let's save the optimizers
+torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
+            "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
+torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
 print("finished training")
-
-# weights = torch.load(os.path.join(wd, "car_generator_large_GAN_10.pth"), map_location = 'cpu')
-# args = {'nz': 100, 'ngf': 64, 'nc': 3}
-
-# model = Generator(**args)
-# model.load_state_dict(weights)
-# z = torch.randn(1, 100, 1, 1)
-# out = model(z)
-# t_= transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1,1,1])
-# out = out.detach().clone().squeeze_(0)
-# out = t_(out).numpy().transpose(1,2,0)
-# plt.imshow(out)
-# plt.show()

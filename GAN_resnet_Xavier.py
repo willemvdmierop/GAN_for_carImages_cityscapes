@@ -12,7 +12,7 @@ from torch.utils import data
 from torchvision import transforms
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
-import Model_ResNet_GAN
+import Model_ResNet_GAN_Xavier as Model_ResNet_GAN
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
@@ -65,7 +65,7 @@ batch_size, image_size = 256, [64, 64]
 batch_size_str = str(batch_size)
 assert len(image_size) == 2
 # Epochs
-num_epochs = 2
+num_epochs = 1
 # number of channels
 nc = 3
 # latent space (z) size: G input
@@ -141,22 +141,6 @@ for _n, _par in g.state_dict().items():
 print("parameters generator", total_g)
 
 
-# orthogonal parameter regularization. Source: https://github.com/ajbrock/BigGAN-PyTorch/blob/master/utils.py
-def ortho_reg(model, strength=1e-4, blacklist=[]):
-    with torch.no_grad():
-        for param in model.parameters():
-            # Regularize only parameters with at least 2 dim or whitelisted
-            if len(param.shape) < 2 or any([param is item for item in blacklist]):
-                continue
-            # take all parameters to matrix shape, i.e. 2 dim
-            w = param.view(param.shape[0], -1)
-            # apply orthogonal regularization
-            grad = (2 * torch.mm(torch.mm(w, w.t())
-                                 * (1. - torch.eye(w.shape[0], device=w.device)), w))
-            # update regularized parameters
-            param.grad.data += strength * grad.view(param.shape)
-
-
 print('# ' + '=' * 45 + ' Training ' + '=' * 45 + ' #')
 # ============================================= Training ============================================= #
 # create labels
@@ -166,10 +150,10 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-if not os.path.exists(wd + '/gen_images_green_ResNet'):
-    os.mkdir(wd + '/gen_images_green_ResNet')
+if not os.path.exists(wd + '/gen_images_green_' + ResNet_str):
+    os.mkdir(wd + '/gen_images_green_' + ResNet_str)
 
-tb = SummaryWriter(comment="ResNet_GAN_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str)
+tb = SummaryWriter(comment=ResNet_str + "_GAN_Orthogonal_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "epochs_" + str(num_epochs))
 loss = BCELoss()
 loss = loss.to(device)
 epochs = 0
@@ -182,26 +166,26 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
     optimizerD.load_state_dict(checkpoint['optimizer_state_dict_D'])
     optimizerG.load_state_dict(checkpoint['optimizer_state_dict_G'])
     epochs = checkpoint['epoch'] + 1
-
-if os.path.exists(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
-    print("Loading pretrained generator")
-
-    weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
+    try:
+        print("Loading pretrained generator")
+        weights_g = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd"
                                             + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
-    g.load_state_dict(weights_g)
-
-if os.path.exists(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth")):
-    print("Loading pretrained discriminator")
-    weights_d = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
-                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs -1) + ".pth"))
-    d.load_state_dict(weights_d)
-
+        g.load_state_dict(weights_g)
+    except:
+        raise FileNotFoundError("could not load Generator")
+    try:
+        print("Loading pretrained discriminator")
+        weights_d = torch.load(os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd"
+                                            + w_decay_str + "_lr" + lrate_str + "_e" + str(epochs - 1) + ".pth"))
+        d.load_state_dict(weights_d)
+    except:
+        raise FileNotFoundError("could not load Discriminator")
 
 
 img_list = []
 # main train loop
+if epochs >= num_epochs:
+    raise SyntaxError("we have already trained for this amount of epochs")
 for e in range(epochs, num_epochs):
     for id, data in dataloader:
         # print(id)
@@ -245,8 +229,6 @@ for e in range(epochs, num_epochs):
         loss_g_real = loss(o, labels_g_real)
         # update generator weights
         loss_g_real.backward()
-        # apply orthogonal regularization to generator parameters
-        ortho_reg(g)
         # update generator parameters
         optimizerG.step()
 
@@ -271,8 +253,8 @@ for e in range(epochs, num_epochs):
             model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [3, 4, 6, 3], **g_pars)
         model.load_state_dict(weights)
         for i in range(5):
-            if not os.path.exists(wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e)):
-                os.mkdir(wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e))
+            if not os.path.exists(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e)):
+                os.mkdir(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1)
             out = model(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
