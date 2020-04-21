@@ -215,6 +215,9 @@ wd = '/home/enterprise.internal.city.ac.uk/adbb120/705'
 if not os.path.exists(os.path.join(wd, 'checkpoints')):
 	os.mkdir(os.path.join(wd, 'checkpoints'))
 checkpoints = os.path.join(wd, 'checkpoints')
+if not os.path.exists(os.path.join(wd, 'gen_images_fgreen')):
+	os.mkdir(os.path.join(wd, 'gen_images_fgreen'))
+gen_imgs = os.path.join(wd, 'gen_images_fgreen')
 
 # number of generator feature filters
 ngf = 64
@@ -280,6 +283,7 @@ loss = loss.to(device)
 
 # main train loop
 for e in range(num_epochs):
+	#print('This is epoch #{}'.format(e))
 	for id, imgs in dataloader:
 		# print(id)
 		# first, train the discriminator
@@ -295,10 +299,10 @@ for e in range(num_epochs):
 		d_real = d(imgs).view(1, -1)
 		# loss from real data
 		d_loss_real = loss(d_real, labels_real)
-		#d_loss_real.backward()
+		# d_loss_real.backward()
 
 		# generator input and output
-		z = torch.randn(batch_size, nz, 1, 1, device = device)
+		z = torch.randn(batch_size, nz, 1, 1, device=device)
 		h = g(z)
 		# all labels are 0s
 		labels_fake = torch.zeros(batch_size).unsqueeze_(0)
@@ -307,8 +311,8 @@ for e in range(num_epochs):
 		d_fake = d(h.detach()).view(1, -1)
 		# loss from generated data
 		d_loss_fake = loss(d_fake, labels_fake)
-		#d_loss_fake.backward()
-		#d_loss_real, d_loss_fake = loss_hinge_d(d_fake, d_real)
+		# d_loss_fake.backward()
+		# d_loss_real, d_loss_fake = loss_hinge_d(d_fake, d_real)
 		total_loss = d_loss_real + d_loss_fake
 		total_loss = total_loss.to(device)
 		total_loss.backward()
@@ -321,7 +325,7 @@ for e in range(num_epochs):
 		g.zero_grad()
 		d_fake = d(h).view(1, -1)
 		g_loss = loss(d_fake, labels_real)
-		#g_loss = loss_hinge_g(d_fake)
+		# g_loss = loss_hinge_g(d_fake)
 		g_loss = g_loss.to(device)
 		# update generator weights
 		g_loss.backward()
@@ -333,23 +337,40 @@ for e in range(num_epochs):
 		# track losses on tensorboard
 		tb.add_scalar('Discriminator Loss (D(x) + D(G(z)))', total_loss, e)
 		tb.add_scalar('Generator Loss (G(z))', g_loss, e)
+
 	# save parameters checkpoint
-	if e % 100 == 0 and e > 100:
-		torch.save(g.state_dict(), os.path.join(checkpoints, 'G_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth' .format(e)))
-		torch.save(d.state_dict(), os.path.join(checkpoints, 'D_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth' .format(e)))
+	if e % 50 == 0:
+		print(30 * '-' + ' Saving models and optimizers state dicts... ' + 30 * '-')
+		torch.save(g.state_dict(),
+				   os.path.join(checkpoints, 'G_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+		torch.save(optimizerG.state_dict(),
+				   os.path.join(checkpoints, 'OptG_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+		torch.save(d.state_dict(),
+				   os.path.join(checkpoints, 'D_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+		torch.save(optimizerD.state_dict(),
+				   os.path.join(checkpoints, 'OptD_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+		print(30 * '-' + ' Models and optimizers state dicts saved ' + 30 * '-')
 		for i in range(5):
-			if not os.path.exist(wd + '/gen_images_green/hallucinated_' + str(e)):
-				os.mkdir(wd + '/gen_images_green/hallucinated' + str(e))
-			z = truncated_z_sample(dim_z = 100)
-			out = g(z)
+			if not os.path.exists(os.path.join(gen_imgs, 'hallucinated_{}e'.format(e))):
+				#print(30 * '-' + ' Creating folder to store {}e\'s hallucinated imgs '.format(e) + 30 * '-')
+				os.mkdir(os.path.join(gen_imgs, 'hallucinated_{}e'.format(e)))
+			weights = torch.load(os.path.join(checkpoints, 'G_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+			args = {'nz': 100, 'ngf': 64, 'nc': 3}
+			model = Generator(**args)
+			model.load_state_dict(weights)
+			z = torch.randn(1, 100, 1, 1)
+			out = model(z)
 			t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
 			out = out.detach().clone().squeeze_(0)
 			out = t_(out).numpy().transpose(1, 2, 0)
-			filename = wd + '/gen_images_green/hallucinated' + str(e) + '/generated_' + str(i)
 			plt.imshow(out)
+			filename = os.path.join(gen_imgs, 'hallucinated_{}e'.format(e)) + '/generated_{}'.format(i) + '.png'
 			plt.savefig(filename)
 
-
 tb.close()
-torch.save(g.state_dict(), os.path.join(checkpoints, 'G_lr-3_wd-3_3ke_green_orthwinigreg_sattn_bce.pth'))
-torch.save(d.state_dict(), os.path.join(checkpoints, 'D_lr-3_wd-3_3ke_green_orthwinigreg_sattn_bce.pth'))
+torch.save(g.state_dict(), os.path.join(checkpoints, 'G_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+torch.save(optimizerG.state_dict(),
+		   os.path.join(checkpoints, 'OptG_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+torch.save(d.state_dict(), os.path.join(checkpoints, 'D_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
+torch.save(optimizerD.state_dict(),
+		   os.path.join(checkpoints, 'OptD_lr-3_wd-3_{}e_green_orthwinigreg_sattn_bce.pth'.format(e)))
