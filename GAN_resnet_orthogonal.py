@@ -74,10 +74,12 @@ latentVect = 100
 FeaDis = 64
 # Feature vector of generator
 FeaGen = 64
-#### chose your Resnet:
-ResN18 = False ########
-ResN34 = True #########
-#######################
+#### chose your Resnet:##
+ResN18 = True ###########
+ResN34 = False ##########
+Gradient_clip_on = True #
+max_grad_norm = 1.0 #####
+#########################
 # optimizers
 lrate = 1e-4
 lrate_str = '0001'
@@ -250,6 +252,10 @@ for e in range(epochs, num_epochs):
         ortho_reg(g)
         # update generator parameters
         optimizerG.step()
+        if Gradient_clip_on:
+            # gradient clipping
+            torch.nn.utils.clip_grad_norm_(g.parameters(), max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(d.parameters(), max_grad_norm)
 
         tb.add_scalar('Discriminator Loss w.r.t. Real Data (D(x))', loss_t, e)
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)

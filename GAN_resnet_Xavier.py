@@ -74,10 +74,12 @@ latentVect = 100
 FeaDis = 64
 # Feature vector of generator
 FeaGen = 64
-#### chose your Resnet:
-ResN18 = False ########
-ResN34 = True #########
-#######################
+#### chose your Resnet:##
+ResN18 = True ###########
+ResN34 = False ##########
+Gradient_clip_on = True #
+max_grad_norm = 1.0 #####
+#########################
 # optimizers
 lrate = 1e-4
 lrate_str = '0001'
@@ -90,9 +92,9 @@ if ResN34: ResNet_str = 'ResNet34'
 dirname = 'model_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-#path_img = os.path.join(wd, "cars3_green")
+path_img = os.path.join(wd, "v_05_full_green_carimages")
 # this is just for now, use path above for server training
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -215,8 +217,6 @@ for e in range(epochs, num_epochs):
         loss_g = loss(predict_g, labels_g)
         loss_g.backward()
         total_loss = loss_t + loss_g
-        # apply orthogonal regularization to discriminator parameters
-        ortho_reg(d)
         # update discriminator parameters
         optimizerD.step()
 
@@ -231,7 +231,10 @@ for e in range(epochs, num_epochs):
         loss_g_real.backward()
         # update generator parameters
         optimizerG.step()
-
+        if Gradient_clip_on:
+            # gradient clipping
+            torch.nn.utils.clip_grad_norm_(g.parameters(), max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(d.parameters(), max_grad_norm)
         tb.add_scalar('Discriminator Loss w.r.t. Real Data (D(x))', loss_t, e)
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
@@ -261,7 +264,7 @@ for e in range(epochs, num_epochs):
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
+            filename = wd + "/gen_images_green_" + ResNet_str + "/hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
             plt.savefig(filename)
 
 tb.close()
