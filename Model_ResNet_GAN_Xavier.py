@@ -61,7 +61,7 @@ class ResNet_Discriminator(nn.Module):
         out = self.layer4(out)
         out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
-        out = torch.sigmoid(self.linear(out)) #todo this sigmoid might be wrong check !
+        out = torch.sigmoid(self.linear(out))
         return out
 
 
