@@ -88,6 +88,7 @@ class Generator(nn.Module):
     def forward(self, input):
         return self.main(input)
 
+
 # ============================================== Discriminator ========================================== #
 # Discriminator takes an 'image': object dimensionality batch_size x 3 x H x W
 class Discriminator(nn.Module):
@@ -152,8 +153,8 @@ lrate_str = '0001'
 
 path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 
-#path_img = os.path.join(wd, "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_07_cropped_green_carimages")
-#for filename in sorted(os.listdir(path_img)):
+# path_img = os.path.join(wd, "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_07_cropped_green_carimages")
+# for filename in sorted(os.listdir(path_img)):
 #    if filename == '.DS_Store':
 #        os.remove(path_img + "/" + filename)
 
@@ -212,25 +213,26 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
         raise FileNotFoundError("could not load Generator")
 
 
-
 # =========================================== Latent Space Optimization ===================================== #
 # we follow the schematic introduced in the "LOGAN: Latent optimisation for generative adversarial networks" Figure 3
-def Latent_SO_Natural_Gradient_Descent(Generator, Discriminator, latent_vector, alpha = 0.9,
-                                       beta = 5, norm = 300):
+def Latent_SO_Natural_Gradient_Descent(Generator, Discriminator, latent_vector, alpha=0.9,
+                                       beta=5, norm=300):
     z = latent_vector
     X_hat_Generator = Generator(z)
     f_z = Discriminator(X_hat_Generator)
-    gradient = torch.autograd.grad(outputs=f_z, inputs = z, grad_outputs=torch.ones_like(f_z),
-                                   retain_graph= True,
+    gradient = torch.autograd.grad(outputs=f_z, inputs=z, grad_outputs=torch.ones_like(f_z),
+                                   retain_graph=True,
                                    create_graph=True)[0]
     # ======================================== equation 12 of the paper: ====================================== #
-    delta_z = ((alpha) / (beta + torch.norm(gradient, p = 2, dim = 0)/norm))*gradient
+    delta_z = ((alpha) / (beta + torch.norm(gradient, p=2, dim=0) / norm)) * gradient
     with torch.no_grad():
-        z_new = torch.clamp( z + delta_z, min = -1, max = 1)
+        z_new = torch.clamp(z + delta_z, min=-1, max=1)
     return z_new
 
+
 def sample_noise(batch_size, dim):
-    return Variable(2*torch.rand([batch_size, dim,1,1])-1, requires_grad = True)
+    return Variable(2 * torch.rand([batch_size, dim, 1, 1]) - 1, requires_grad=True)
+
 
 # =========================================== Print parameters of models ===================================== #
 '''
@@ -262,9 +264,10 @@ for e in range(epochs, num_epochs):
         batch_size = data.size()[0]
         d.zero_grad()
         g.zero_grad()
+        z_old = torch.randn(batch_size, latentVect, 1, 1, device=device)
         z = sample_noise(batch_size, latentVect).to(device)
         z_new = Latent_SO_Natural_Gradient_Descent(Generator=g, Discriminator=d, latent_vector=z,
-                                                alpha = 0.9, beta = 5, norm = 300)
+                                                   alpha=0.9, beta=5, norm=300)
         # first, train the discriminator
         d.zero_grad()
         g.zero_grad()
@@ -280,7 +283,7 @@ for e in range(epochs, num_epochs):
         loss_t = loss(predict_d, labels_t)
         loss_t.backward()
         # generator input and output
-        #z = torch.randn(batch_size, latentVect, 1, 1, device=device)
+        # z = torch.randn(batch_size, latentVect, 1, 1, device=device)
         h = g(z_new)
         # all labels are 0s
         labels_g = torch.zeros(batch_size).unsqueeze_(0)
@@ -313,31 +316,37 @@ for e in range(epochs, num_epochs):
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
                     "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
         ## let's save the weights of the models
-        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(g.state_dict(), os.path.join(folder_name,
+                                                "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                                    e) + ".pth"))
+        torch.save(d.state_dict(), os.path.join(folder_name,
+                                                "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                                    e) + ".pth"))
         print("saved intermediate weights")
-        ## let's load the model to generate images.
-        weights = torch.load(os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        args = {'latentVect': 100, 'FeaGen': 128, 'nc': 3}
-        model = Generator(**g_pars)
-        model.load_state_dict(weights)
+        g.eval()
         for i in range(5):
             if not os.path.exists(wd + "/gen_images_v07_gr_LOGAN/" + "hallucinated_" + str(e)):
                 os.mkdir(wd + "/gen_images_v07_gr_LOGAN/" + "hallucinated_" + str(e))
-            z = sample_noise(batch_size, latentVect).to(device)
-            z_new = Latent_SO_Natural_Gradient_Descent(Generator=g, Discriminator=d, latent_vector=z,
-                                                       batch_size=batch_size, alpha=0.9, beta=5, norm=300)
-            out = model(z_new)
+            z = torch.randn(1, 100, 1, 1).to(device)
+            # z = sample_noise(1, 100)
+            # z_new = Latent_SO_Natural_Gradient_Descent(Generator=g, Discriminator=d, latent_vector=z,
+            # alpha=0.9, beta=5, norm=300)
+            out = g(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
-            out = t_(out).numpy().transpose(1, 2, 0)
+            out = t_(out).cpu().numpy().transpose(1, 2, 0)
             plt.imshow(out)
+            plt.show()
             filename = wd + "/gen_images_v07_gr_LOGAN/" + "hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
             plt.savefig(filename)
-
+        g.train()
 tb.close()
 ## let's save the optimizers
 torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
             "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
-torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+torch.save(g.state_dict(), os.path.join(folder_name,
+                                        "gen_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                            e) + ".pth"))
+torch.save(d.state_dict(), os.path.join(folder_name,
+                                        "dis_gr_DC_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                            e) + ".pth"))
