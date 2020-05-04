@@ -65,7 +65,7 @@ batch_size, image_size = 256, [64, 64]
 batch_size_str = str(batch_size)
 assert len(image_size) == 2
 # Epochs
-num_epochs = 1
+num_epochs = 2000
 # number of channels
 nc = 3
 # latent space (z) size: G input
@@ -89,10 +89,10 @@ optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
 if ResN18: ResNet_str = 'ResNet18'
 if ResN34: ResNet_str = 'ResNet34'
 
-dirname = 'model_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
+dirname = 'model_cropped_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-path_img = os.path.join(wd, "v_05_full_green_carimages")
+path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
 #path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
@@ -152,8 +152,8 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-if not os.path.exists(wd + '/gen_images_green_' + ResNet_str):
-    os.mkdir(wd + '/gen_images_green_' + ResNet_str)
+if not os.path.exists(wd + '/gen_images_green_cropped_' + ResNet_str):
+    os.mkdir(wd + '/gen_images_green_cropped_' + ResNet_str)
 
 # =========================================== Pretrained Loading ===================================== #
 epochs = 0
@@ -239,7 +239,7 @@ for e in range(epochs, num_epochs):
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    if e % 100 == 0:
+    if e % 50 == 0:
         ## let's save the optimizers
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
                     "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
@@ -256,15 +256,15 @@ for e in range(epochs, num_epochs):
             model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [3, 4, 6, 3], **g_pars)
         model.load_state_dict(weights)
         for i in range(5):
-            if not os.path.exists(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e)):
-                os.mkdir(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e))
+            if not os.path.exists(wd + '/gen_images_green_cropped_' + ResNet_str + "/hallucinated_" + str(e)):
+                os.mkdir(wd + '/gen_images_green_cropped_' + ResNet_str + "/hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1)
             out = model(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_green_" + ResNet_str + "/hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
+            filename = wd + "/gen_images_green_cropped_" + ResNet_str + "/hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
             plt.savefig(filename)
 
 tb.close()

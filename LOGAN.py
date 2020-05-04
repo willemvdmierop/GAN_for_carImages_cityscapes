@@ -13,9 +13,8 @@ from torch.utils import data
 from torchvision import transforms
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
-import Model_ResNet_GAN_Xavier as Model_ResNet_GAN
 
-# Bidirectional LoGAN is based on this code: https://sharath.github.io/logan-b/experiments/mnist/mnist_logan_b.html
+# Bidirectional LoGAN is based on this code: https://github.com/sharath/logan-b
 
 device = torch.device('cpu')
 if torch.cuda.is_available():
@@ -202,8 +201,8 @@ lrate_str = '0001'
 
 # ====================================== dataset and dataloader ====================================== #
 
-# path_img = os.path.join(wd, "cars3_green")
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
+path_img = os.path.join(wd, "v_07_cropped_green_carimages")
+#1path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -215,7 +214,7 @@ dataloader = data.DataLoader(obs, **dataloader_pars)
 
 # =============================== Instantiate models and put them on CUDA ============================ #
 
-dirname = 'model_LoGAN_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
+dirname = 'model_LoGAN_cropped_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
 g_pars = {'latentVect': latentVect, 'FeaGen': FeaGen, 'nc': nc}
@@ -238,8 +237,8 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-if not os.path.exists(wd + '/gen_images_gr_LoGAN'):
-    os.mkdir(wd + '/gen_images_gr_LoGAN')
+if not os.path.exists(wd + '/gen_imgs_cropped_gr_LoGAN'):
+    os.mkdir(wd + '/gen_imgs_cropped_gr_LoGAN')
 
 # =========================================== Pretrained Loading ===================================== #
 epochs = 0
@@ -274,6 +273,8 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
     except:
         raise FileNotFoundError("could not load Encoder")
 
+# =========================================== Latent Space Optimization ===================================== #
+
 
 
 # =========================================== Print parameters of models ===================================== #
@@ -293,7 +294,7 @@ print("parameters discriminator", total_d)
 
 # ================================================= Training ================================================== #
 # loss function
-tb = SummaryWriter(comment="LoGAN_GAN_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str)
+tb = SummaryWriter(comment="LoGAN__cropped_GAN_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str)
 loss = BCELoss().to(device)
 latent_loss = L1Loss(reduction='sum').to(device)
 # main train loop
@@ -384,15 +385,15 @@ for e in range(epochs, num_epochs):
         model = Generator(**g_pars)
         model.load_state_dict(weights)
         for i in range(5):
-            if not os.path.exists(wd + "/gen_images_gr_LoGAN/" + "hallucinated_" + str(e)):
-                os.mkdir(wd + "/gen_images_gr_LoGAN/" + "hallucinated_" + str(e))
+            if not os.path.exists(wd + "/gen_imgs_cropped_gr_LoGAN/" + "hallucinated_" + str(e)):
+                os.mkdir(wd + "/gen_imgs_cropped_gr_LoGAN/" + "hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1)
             out = model(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_gr_LoGAN/" + "hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
+            filename = wd + "/gen_imgs_cropped_gr_LoGAN/" + "hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
             plt.savefig(filename)
 
 tb.close()
