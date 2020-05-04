@@ -258,6 +258,8 @@ if epochs >= num_epochs:
 for e in range(epochs, num_epochs):
     for id, data in dataloader:
         # ============= latent optimization step =========
+        data = data.to(device)
+        batch_size = data.size()[0]
         d.zero_grad()
         g.zero_grad()
         z = sample_noise(batch_size, latentVect).to(device)
