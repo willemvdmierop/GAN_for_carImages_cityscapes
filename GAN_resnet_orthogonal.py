@@ -94,9 +94,9 @@ dirname = 'model_crpd_' + ResNet_str + '_LOGAN_'+ str(latent_space_optimisation)
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
 # ============================================= Dataset path ========================================= #
-#path_img = os.path.join(wd, "cars3_green")
+path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -217,8 +217,9 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
         raise FileNotFoundError("could not load Discriminator")
 
 # ============================================= Training ============================================= #
-if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)):
-    os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation))
+filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)
+if not os.path.exists(os.path.join(wd,filename_images)):
+    os.mkdir(os.path.join(wd,filename_images))
 
 tb = SummaryWriter(comment=ResNet_str + "_GAN_Orthogonal_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "epochs_" + str(num_epochs))
 loss = BCELoss()
@@ -300,24 +301,21 @@ for e in range(epochs, num_epochs):
         torch.save(g.state_dict(), os.path.join(folder_name,
                                                 "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
                                                     e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(folder_name,
+        torch.save(d.state_dicts(), os.path.join(folder_name,
                                                 "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
                                                     e) + ".pth"))
         print("saved intermediate weights")
         g.eval()
         for i in range(5):
-            if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
-                    latent_space_optimisation) + "/hallucinated_" + str(e)):
-                os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
-                    latent_space_optimisation) + "/hallucinated_" + str(e))
+            if not os.path.exists(os.path.join(wd,filename_images) + "/hallucinated_" + str(e)):
+                os.mkdir(os.path.join(wd,filename_images) + "/hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1).to(device)
             out = g(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
-            out = t_(out).numpy().transpose(1, 2, 0)
+            out = t_(out).cpu().numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
-                latent_space_optimisation) + "/hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
+            filename = os.path.join(wd,filename_images) + "/hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
             plt.savefig(filename)
         g.train()
 
