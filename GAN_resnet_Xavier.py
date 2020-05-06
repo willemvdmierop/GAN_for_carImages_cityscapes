@@ -13,7 +13,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
 import Model_ResNet_GAN_Xavier as Model_ResNet_GAN
-
+from torch.autograd import Variable
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
 
@@ -74,12 +74,14 @@ latentVect = 100
 FeaDis = 64
 # Feature vector of generator
 FeaGen = 64
-#### chose your Resnet:##
-ResN18 = False ###########
-ResN34 = True ##########
-Gradient_clip_on = True #
-max_grad_norm = 1.0 #####
-#########################
+
+#### chose your Resnet:############
+ResN18 = True #####################
+ResN34 = False ####################
+Gradient_clip_on = True ###########
+max_grad_norm = 1.0 ###############
+latent_space_optimisation = True ##
+###################################
 # optimizers
 lrate = 1e-4
 lrate_str = '0001'
@@ -89,16 +91,18 @@ optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
 if ResN18: ResNet_str = 'ResNet18'
 if ResN34: ResNet_str = 'ResNet34'
 
-dirname = 'model_cropped_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
+dirname = 'model_crpd_' + ResNet_str + '_LOGAN_'+ str(latent_space_optimisation) + '_gradclip_' + str(Gradient_clip_on)+ '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-path_img = os.path.join(wd, "v_07_cropped_green_carimages")
+#path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
-#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
-
+print("we are building a " + ResNet_str + " GAN with gradient clipping " + str(Gradient_clip_on) +
+                                        " and latent space optimization " + str(latent_space_optimisation))
+print(dirname)
 # ====================================== dataset and dataloader ====================================== #
 dataset_pars = {'img_size': image_size, 'img_data': path_img}
 obs = Cars(**dataset_pars)
@@ -129,6 +133,27 @@ if ResN34:
 # g.load_state_dict(weights_g)
 g = g.to(device)
 
+# =========================================== Latent Space Optimization ===================================== #
+# we follow the schematic introduced in the "LOGAN: Latent optimisation for generative adversarial networks" Figure 3
+def Latent_SO_Natural_Gradient_Descent(Generator, Discriminator, latent_vector, alpha=0.9,
+                                       beta=5, norm=300):
+    z = latent_vector
+    X_hat_Generator = Generator(z)
+    f_z = Discriminator(X_hat_Generator)
+    gradient = torch.autograd.grad(outputs=f_z, inputs=z, grad_outputs=torch.ones_like(f_z),
+                                   retain_graph=True,
+                                   create_graph=True)[0]
+    # ======================================== equation 12 of the paper: ====================================== #
+    delta_z = ((alpha) / (beta + torch.norm(gradient, p=2, dim=0) / norm)) * gradient
+    with torch.no_grad():
+        z_new = torch.clamp(z + delta_z, min=-1, max=1)
+    return z_new
+
+
+def sample_noise(batch_size, dim):
+    return Variable(2 * torch.rand([batch_size, dim, 1, 1]) - 1, requires_grad=True)
+
+
 # =========================================== Print parameters of models ===================================== #
 '''
 print(g)
@@ -152,8 +177,9 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-if not os.path.exists(wd + '/gen_images_green_cropped_' + ResNet_str):
-    os.mkdir(wd + '/gen_images_green_cropped_' + ResNet_str)
+'/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)
+if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)):
+    os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation))
 
 # =========================================== Pretrained Loading ===================================== #
 epochs = 0
@@ -196,6 +222,15 @@ for e in range(epochs, num_epochs):
         g.zero_grad()
         data = data.to(device)
         batch_size = data.size()[0]
+
+        if latent_space_optimisation:
+            z_old = torch.randn(batch_size, latentVect, 1, 1, device=device)
+            z = sample_noise(batch_size, latentVect).to(device)
+            z = Latent_SO_Natural_Gradient_Descent(Generator=g, Discriminator=d, latent_vector=z,
+                                                       alpha=0.9, beta=5, norm=300)
+        else:
+            z = torch.randn(batch_size, latentVect, 1, 1, device=device)
+
         # labels: all 1s
         labels_t = torch.ones(batch_size).unsqueeze_(0)
         labels_t = labels_t.to(device)
@@ -206,7 +241,6 @@ for e in range(epochs, num_epochs):
         loss_t = loss(predict_d, labels_t)
         loss_t.backward()
         # generator input and output
-        z = torch.randn(batch_size, latentVect, 1, 1, device=device)
         h = g(z)
         # all labels are 0s
         labels_g = torch.zeros(batch_size).unsqueeze_(0)
@@ -239,7 +273,7 @@ for e in range(epochs, num_epochs):
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    if e % 50 == 0:
+    #if e % 50 == 0:
         ## let's save the optimizers
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
                     "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
@@ -249,15 +283,15 @@ for e in range(epochs, num_epochs):
         print("saved intermediate weights")
         g.eval()
         for i in range(5):
-            if not os.path.exists(wd + '/gen_images_green_cropped_' + ResNet_str + "/hallucinated_" + str(e)):
-                os.mkdir(wd + '/gen_images_green_cropped_' + ResNet_str + "/hallucinated_" + str(e))
+            if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + "/hallucinated_" + str(e)):
+                os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + "/hallucinated_" + str(e))
             z = torch.randn(1, 100, 1, 1).to(device)
             out = g(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_green_cropped_" + ResNet_str + "/hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
+            filename = wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + "/hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
             plt.savefig(filename)
         g.train()
 
