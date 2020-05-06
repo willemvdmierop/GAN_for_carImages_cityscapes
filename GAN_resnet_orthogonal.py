@@ -13,7 +13,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from torch.utils.tensorboard import SummaryWriter
 import Model_ResNet_GAN_ortho as Model_ResNet_GAN
-
+from torch.autograd import Variable
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
 
@@ -74,12 +74,13 @@ latentVect = 100
 FeaDis = 64
 # Feature vector of generator
 FeaGen = 64
-#### chose your Resnet:##
-ResN18 = True ###########
-ResN34 = False ##########
-Gradient_clip_on = True #
-max_grad_norm = 1.0 #####
-#########################
+#### chose your Resnet:############
+ResN18 = True #####################
+ResN34 = False ####################
+Gradient_clip_on = True ###########
+max_grad_norm = 1.0 ###############
+latent_space_optimisation = True ##
+###################################
 # optimizers
 lrate = 1e-4
 lrate_str = '0001'
@@ -89,7 +90,7 @@ optimizer_pars = {'lr': lrate, 'weight_decay': 1e-3}
 if ResN18: ResNet_str = 'ResNet18'
 if ResN34: ResNet_str = 'ResNet34'
 
-dirname = 'model_' + ResNet_str + '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
+dirname = 'model_crpd_' + ResNet_str + '_LOGAN_'+ str(latent_space_optimisation) + '_gradclip_' + str(Gradient_clip_on)+ '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
 # ============================================= Dataset path ========================================= #
@@ -129,6 +130,27 @@ if ResN34:
 # weights_g = torch.load(os.path.join(wd, "gen_gr_ResN_LR1e-4_WD1e-3_Batch256_2000.pth"))
 # g.load_state_dict(weights_g)
 g = g.to(device)
+
+# =========================================== Latent Space Optimization ===================================== #
+# we follow the schematic introduced in the "LOGAN: Latent optimisation for generative adversarial networks" Figure 3
+def Latent_SO_Natural_Gradient_Descent(Generator, Discriminator, latent_vector, alpha=0.9,
+                                       beta=5, norm=300):
+    z = latent_vector
+    X_hat_Generator = Generator(z)
+    f_z = Discriminator(X_hat_Generator)
+    gradient = torch.autograd.grad(outputs=f_z, inputs=z, grad_outputs=torch.ones_like(f_z),
+                                   retain_graph=True,
+                                   create_graph=True)[0]
+    # ======================================== equation 12 of the paper: ====================================== #
+    delta_z = ((alpha) / (beta + torch.norm(gradient, p=2, dim=0) / norm)) * gradient
+    with torch.no_grad():
+        z_new = torch.clamp(z + delta_z, min=-1, max=1)
+    return z_new
+
+
+def sample_noise(batch_size, dim):
+    return Variable(2 * torch.rand([batch_size, dim, 1, 1]) - 1, requires_grad=True)
+
 # =========================================== Print parameters of models ===================================== #
 '''
 print(g)
@@ -195,8 +217,8 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
         raise FileNotFoundError("could not load Discriminator")
 
 # ============================================= Training ============================================= #
-if not os.path.exists(wd + '/gen_images_green_' + ResNet_str):
-    os.mkdir(wd + '/gen_images_green_' + ResNet_str)
+if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)):
+    os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation))
 
 tb = SummaryWriter(comment=ResNet_str + "_GAN_Orthogonal_batch" + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str + "epochs_" + str(num_epochs))
 loss = BCELoss()
@@ -213,6 +235,15 @@ for e in range(epochs, num_epochs):
         g.zero_grad()
         data = data.to(device)
         batch_size = data.size()[0]
+        # ======================== latent optimization step if True =========================
+        if latent_space_optimisation:
+            z_old = torch.randn(batch_size, latentVect, 1, 1, device=device)
+            z = sample_noise(batch_size, latentVect).to(device)
+            z = Latent_SO_Natural_Gradient_Descent(Generator=g, Discriminator=d, latent_vector=z,
+                                                       alpha=0.9, beta=5, norm=300)
+        else:
+            z = torch.randn(batch_size, latentVect, 1, 1, device=device)
+
         # labels: all 1s
         labels_t = torch.ones(batch_size).unsqueeze_(0)
         labels_t = labels_t.to(device)
@@ -261,33 +292,34 @@ for e in range(epochs, num_epochs):
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    if e % 100 == 0:
+    if e % 50 == 0:
         ## let's save the optimizers
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
-                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
+                    "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name, 'checkpoint.pth'))
         ## let's save the weights
-        torch.save(g.state_dict(), os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        torch.save(d.state_dict(), os.path.join(folder_name, "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
+        torch.save(g.state_dict(), os.path.join(folder_name,
+                                                "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                                    e) + ".pth"))
+        torch.save(d.state_dict(), os.path.join(folder_name,
+                                                "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
+                                                    e) + ".pth"))
         print("saved intermediate weights")
-        ## let's load the model to generate images.
-        weights = torch.load(os.path.join(folder_name, "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(e) + ".pth"))
-        args = {'latentVect': 100, 'FeaGen': 128, 'nc': 3}
-        if ResN18:
-            model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [2, 2, 2, 2], **g_pars)
-        if ResN34:
-            model = Model_ResNet_GAN.ResNet_Generator(Model_ResNet_GAN.Generator_BasicBlock, [3, 4, 6, 3], **g_pars)
-        model.load_state_dict(weights)
+        g.eval()
         for i in range(5):
-            if not os.path.exists(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e)):
-                os.mkdir(wd + '/gen_images_green_' + ResNet_str + "/hallucinated_" + str(e))
-            z = torch.randn(1, 100, 1, 1)
-            out = model(z)
+            if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
+                    latent_space_optimisation) + "/hallucinated_" + str(e)):
+                os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
+                    latent_space_optimisation) + "/hallucinated_" + str(e))
+            z = torch.randn(1, 100, 1, 1).to(device)
+            out = g(z)
             t_ = transforms.Normalize(mean=[-0.485, -0.450, -0.407], std=[1, 1, 1])
             out = out.detach().clone().squeeze_(0)
             out = t_(out).numpy().transpose(1, 2, 0)
             plt.imshow(out)
-            filename = wd + "/gen_images_green_ResNet/" + "hallucinated_" + str(e) + "/generated_"+ str(i) + ".png"
+            filename = wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(
+                latent_space_optimisation) + "/hallucinated_" + str(e) + "/generated_" + str(i) + ".png"
             plt.savefig(filename)
+        g.train()
 
 tb.close()
 torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),

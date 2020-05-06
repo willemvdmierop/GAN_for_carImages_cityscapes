@@ -94,9 +94,9 @@ if ResN34: ResNet_str = 'ResNet34'
 dirname = 'model_crpd_' + ResNet_str + '_LOGAN_'+ str(latent_space_optimisation) + '_gradclip_' + str(Gradient_clip_on)+ '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-#path_img = os.path.join(wd, "v_07_cropped_green_carimages")
+path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -177,7 +177,7 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-'/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)
+
 if not os.path.exists(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)):
     os.mkdir(wd + '/gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation))
 
@@ -222,7 +222,7 @@ for e in range(epochs, num_epochs):
         g.zero_grad()
         data = data.to(device)
         batch_size = data.size()[0]
-
+        # ======================== latent optimization step if True =========================
         if latent_space_optimisation:
             z_old = torch.randn(batch_size, latentVect, 1, 1, device=device)
             z = sample_noise(batch_size, latentVect).to(device)
@@ -273,7 +273,7 @@ for e in range(epochs, num_epochs):
         tb.add_scalar('Discriminator Loss w.r.t. Generated Data (D(1-G(z)))', loss_g, e)
         tb.add_scalar('Total Loss', total_loss, e)
 
-    #if e % 50 == 0:
+    if e % 50 == 0:
         ## let's save the optimizers
         torch.save({'epoch': e, 'optimizer_state_dict_D': optimizerD.state_dict(),
                     "optimizer_state_dict_G": optimizerG.state_dict()}, os.path.join(folder_name,'checkpoint.pth'))
