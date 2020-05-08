@@ -301,7 +301,7 @@ for e in range(epochs, num_epochs):
         torch.save(g.state_dict(), os.path.join(folder_name,
                                                 "gen_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
                                                     e) + ".pth"))
-        torch.save(d.state_dicts(), os.path.join(folder_name,
+        torch.save(d.state_dictsim(), os.path.join(folder_name,
                                                 "dis_gr_ResN_batch_" + batch_size_str + "_wd" + w_decay_str + "_lr" + lrate_str + "_e" + str(
                                                     e) + ".pth"))
         print("saved intermediate weights")
