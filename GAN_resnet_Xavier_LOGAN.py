@@ -95,9 +95,9 @@ if ResN34: ResNet_str = 'ResNet34'
 dirname = 'model_crpd_' + ResNet_str + '_LOGAN_'+ str(latent_space_optimisation) + '_gradclip_' + str(Gradient_clip_on)+ '_batch' + str(batch_size) + "_wd" + w_decay_str + "_lr" + lrate_str
 if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirname))
 
-#path_img = os.path.join(wd, "v_07_cropped_green_carimages")
+path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
-path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -178,7 +178,7 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation)
+filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + '_SelfAttn_' + str(self_attention_on)
 if not os.path.exists(os.path.join(wd, filename_images)):
     os.mkdir(os.path.join(wd, filename_images))
 

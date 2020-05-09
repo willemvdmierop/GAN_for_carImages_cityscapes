@@ -97,7 +97,7 @@ if not os.path.exists(os.path.join(wd, dirname)): os.mkdir(os.path.join(wd, dirn
 # ============================================= Dataset path ========================================= #
 path_img = os.path.join(wd, "v_07_cropped_green_carimages")
 # this is just for now, use path above for server training
-# path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
+#path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3_green"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -219,7 +219,7 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
         raise FileNotFoundError("could not load Discriminator")
 
 # ============================================= Training ============================================= #
-filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + '_Orthogonal'
+filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + '_SelfAttn_' + str(self_attention_on) + '_Orthogonal'
 if not os.path.exists(os.path.join(wd, filename_images)):
     os.mkdir(os.path.join(wd, filename_images))
 
