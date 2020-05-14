@@ -61,11 +61,12 @@ class Cars(data.Dataset):
 #################################
 
 wd = os.getcwd()
-batch_size, image_size = 512, [64, 64]
+batch_size, image_size = 300, [128, 128]
 batch_size_str = str(batch_size)
 assert len(image_size) == 2
+
 # Epochs
-num_epochs = 3000
+num_epochs = 3001
 # number of channels
 nc = 3
 # latent space (z) size: G input
@@ -82,6 +83,10 @@ Gradient_clip_on = True ###########
 max_grad_norm = 1.0 ###############
 latent_space_optimisation = True ##
 self_attention_on = True ##########
+if image_size[0] == 128: ##########
+    high_resolution = True ########
+else:
+    high_resolution = False #######
 ###################################
 # optimizers
 lrate = 1e-4
@@ -111,8 +116,8 @@ dataloader_pars = {'batch_size': batch_size, 'shuffle': True}
 dataloader = data.DataLoader(obs, **dataloader_pars)
 
 # =============================== Instantiate models and put them on CUDA ============================ #
-g_pars = {'z_dim': latentVect, 'in_planes': FeaGen, 'channels': nc, 'attention': self_attention_on}
-d_pars = {'in_planes': FeaDis, 'channels': nc, 'attention': self_attention_on}
+g_pars = {'z_dim': latentVect, 'in_planes': FeaGen, 'channels': nc, 'attention': self_attention_on, 'high_res': high_resolution}
+d_pars = {'in_planes': FeaDis, 'channels': nc, 'attention': self_attention_on, 'high_res': high_resolution}
 
 # ResNet18: parameters discriminator 11183318
 if ResN18:
@@ -178,7 +183,7 @@ generated_label = 0
 optimizerD = optim.Adam(d.parameters(), **optimizer_pars)
 optimizerG = optim.Adam(g.parameters(), **optimizer_pars)
 
-filename_images = 'gen_imgs_grn_cropped_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + '_SelfAttn_' + str(self_attention_on)
+filename_images = 'gen_imgs_grn_cropped_high_res_' + ResNet_str + '_LOGAN_' + str(latent_space_optimisation) + '_SelfAttn_' + str(self_attention_on)
 if not os.path.exists(os.path.join(wd, filename_images)):
     os.mkdir(os.path.join(wd, filename_images))
 

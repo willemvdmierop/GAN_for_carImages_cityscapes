@@ -151,8 +151,8 @@ lrate_str = '0001'
 
 # ====================================== dataset and dataloader ====================================== #
 
-path_img = os.path.join(wd, "v_07_cropped_green_carimages")
-# path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
+#path_img = os.path.join(wd, "v_07_cropped_green_carimages")
+path_img = "/Users/willemvandemierop/Google Drive/DL Classification (705)/v_03_with_carimages/cars3"
 for filename in sorted(os.listdir(path_img)):
     if filename == '.DS_Store':
         os.remove(path_img + "/" + filename)
@@ -213,7 +213,7 @@ if os.path.exists(os.path.join(folder_name, 'checkpoint.pth')):
 
 
 # =========================================== Print parameters of models ===================================== #
-'''
+
 print(g)
 total_g = 0
 for _n, _par in g.state_dict().items():
@@ -225,7 +225,7 @@ total_d = 0
 for _n, _par in d.state_dict().items():
     total_d += _par.numel()
 print("parameters discriminator", total_d)
-'''
+
 
 
 

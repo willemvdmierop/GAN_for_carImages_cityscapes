@@ -192,7 +192,7 @@ g = g.to(device)
 d = d.to(device)
 
 # =========================================== Print parameters of models ===================================== #
-'''
+
 print(g)
 total_g = 0
 for _n, _par in g.state_dict().items():
@@ -204,7 +204,7 @@ total_d = 0
 for _n, _par in d.state_dict().items():
     total_d += _par.numel()
 print("parameters discriminator", total_d)
-'''
+
 # =============================================== Optimizers ========================================= #
 # create labels
 real_label = 1
