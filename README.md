@@ -28,4 +28,9 @@ During training we keep track of the FID socre and the IS score, the calculation
 ## Hallucinated images
 <img src="images/LOGAN_gen_2200.png" width="420"/> <img src="images/ResNet18_SAGAN_LOGAN_2650.png" width="420"/> 
 
-<img src="images/Scores_table.png" width="420"/>
+
+<p align="center">
+  <img width="460" height="300" src="images/Scores_table.png">
+</p>
+
+
