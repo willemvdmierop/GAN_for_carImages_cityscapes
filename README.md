@@ -17,6 +17,8 @@ GAN structures build:
 - Bigger DCGAN
 - BigGAN
 - ResNet GAN
-- LOGAN 
-- - Bidirectional LOGAN
-- - ResNet GAN with Latent Optimisation
+- Latent Optimisation GAN 
+-- LOGAN
+-- Bidirectional LOGAN
+-- ResNet GAN with Latent Optimisation
+-- ResNet GAN with Self-Attention and Latent Optimisation
