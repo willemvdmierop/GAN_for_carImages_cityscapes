@@ -12,4 +12,11 @@ The picture on the left is an image that is obstructed, because of the mask R-CN
 
 These images are the dataset for the different GAN structues that are build. The accuracy metrics used are FID and IS score. 
 
-The original GAN structure that we build is a DC GAN, this can be found in the DCGAN_original.py
+GAN structures build:
+- DCGAN
+- Bigger DCGAN
+- BigGAN
+- ResNet GAN
+- LOGAN 
+- - Bidirectional LOGAN
+- - ResNet GAN with Latent Optimisation
