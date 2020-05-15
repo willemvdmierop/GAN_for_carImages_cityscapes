@@ -1,5 +1,5 @@
 # GANs to hallucinate cars from Cityscapes
-The full report of this repo can be found here [report](./705__CW.pdf)
+The full report of this repo can be found here [report](./705__CW.pdf).
 ## preprocessing
 This repository generates car images from the cityscapes dataset with different GAN structures. The car images are generated using the gt mask labels from the cityscapes dataset, in particular the fine annotation dataset. Then a mask R-CNN is used to see if the mask R-CNN is able to predict a car, when it is able to predict a car then the image will be saved. The mask R-CNN will make sure that some car images that are obstructed by object will not be saved. This is done with the generate_car_images_cityscapes.py file. 
 
