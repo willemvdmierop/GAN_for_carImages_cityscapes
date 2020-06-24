@@ -5,11 +5,11 @@ This repository generates car images from the cityscapes dataset with different 
 
 The original image and the images after the GT labels:
 
-<img src="images/aachen_000000_000019_leftImg8bit.png" width="420"/> <img src="images/Car%20after%20GT%20labels.png" width="420"/> 
+<img src="images/aachen_000000_000019_leftImg8bit.png" width="410"/> <img src="images/Car%20after%20GT%20labels.png" width="410"/> 
 
 The picture on the left is an image that is obstructed, because of the mask R-CNN these don't get saved. The images on the right is the zoomed image after cropping the images using the bounding box produced from the mask R-CNN. 
 
-<img src="images/Obstructed_CarImage.png" width="420"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="420"/> 
+<img src="images/Obstructed_CarImage.png" width="410"/> <img src="images/aachen_000000_000019_carImage_zoomed.png" width="410"/> 
 
 ## Models
 GAN structures build:
@@ -27,7 +27,7 @@ GAN structures build:
 During training we keep track of the FID socre and the IS score, the calculation of these scores is done with the GAN_metrics_FID_IS. 
 
 ## Hallucinated images
-<img src="images/LOGAN_gen_2200.png" width="420"/> <img src="images/ResNet18_SAGAN_LOGAN_2650.png" width="420"/> 
+<img src="images/LOGAN_gen_2200.png" width="410"/> <img src="images/ResNet18_SAGAN_LOGAN_2650.png" width="410"/> 
 
 ## Models performance
 <p align="center">
